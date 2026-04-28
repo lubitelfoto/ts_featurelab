@@ -29,7 +29,7 @@ class WaveletFeature(SingleColumnFeatureExtractor):
         min_points = int(spec.params.get("min_points", 64))
 
         series = context.raw()[col].drop_nulls()
-        x = series.to_numpy()
+        x = series.to_numpy().copy()
 
         if len(x) < min_points:
             return {}

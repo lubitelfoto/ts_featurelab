@@ -1,6 +1,6 @@
-from features.base import SingleColumnFeatureExtractor
-from features.context import FeatureContext
-from features.featurespec import FeatureSpec
+from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.context import FeatureContext
+from ts_featurelab.features.featurespec import FeatureSpec
 
 
 class TrendFeature(SingleColumnFeatureExtractor):

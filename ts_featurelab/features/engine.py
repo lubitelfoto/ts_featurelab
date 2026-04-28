@@ -1,9 +1,9 @@
 import polars as pl
 
-from features.context import FeatureContext
-from features.featurespec import FeatureSpec
-from features.registry import FeatureRegistry
-from features.window import WindowSample
+from ts_featurelab.features.context import FeatureContext
+from ts_featurelab.features.featurespec import FeatureSpec
+from ts_featurelab.features.registry import FeatureRegistry
+from ts_featurelab.features.window import WindowSample
 
 
 class FeatureEngine:

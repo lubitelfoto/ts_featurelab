@@ -1,6 +1,6 @@
 from typing import Any
 
-from features.featurespec import FeatureSpec, parse_feature_specs
+from ts_featurelab.features.featurespec import FeatureSpec, parse_feature_specs
 
 
 def parse_feature_config(config: dict[str, Any]) -> tuple[str, list[FeatureSpec]]:

@@ -1,9 +1,9 @@
-from features.base import SingleColumnFeatureExtractor
-from features.context import FeatureContext
-from features.featurespec import FeatureSpec
-from features.mean import MeanFeature
-from features.trend import TrendFeature
-from features.wavelet import WaveletFeature
+from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.context import FeatureContext
+from ts_featurelab.features.featurespec import FeatureSpec
+from ts_featurelab.features.mean import MeanFeature
+from ts_featurelab.features.trend import TrendFeature
+from ts_featurelab.features.wavelet import WaveletFeature
 
 
 class StdFeature(SingleColumnFeatureExtractor):
@@ -98,7 +98,7 @@ class DynamicPressureFeature(SingleColumnFeatureExtractor):
 
 
 def build_default_registry():
-    from features.registry import FeatureRegistry
+    from ts_featurelab.features.registry import FeatureRegistry
 
     registry = FeatureRegistry()
     for extractor in (

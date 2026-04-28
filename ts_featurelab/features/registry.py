@@ -1,4 +1,4 @@
-from features.base import FeatureExtractor
+from ts_featurelab.features.base import FeatureExtractor
 
 
 class FeatureRegistry:

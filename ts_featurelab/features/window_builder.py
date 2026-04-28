@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import polars as pl
 
-from features.window import WindowSample
+from ts_featurelab.features.window import WindowSample
 
 
 class WindowBuilder:

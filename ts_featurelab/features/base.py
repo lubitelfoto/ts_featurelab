@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from features.featurespec import FeatureSpec
+from ts_featurelab.features.featurespec import FeatureSpec
 
 
 class FeatureExtractor(ABC):

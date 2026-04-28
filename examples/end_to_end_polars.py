@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import polars as pl
 
-from features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
+from ts_featurelab.features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
 
 
 def build_minute_dataframe() -> pl.DataFrame:

@@ -3,7 +3,6 @@ from ts_featurelab.features.config import parse_feature_config
 from ts_featurelab.features.engine import FeatureEngine
 from ts_featurelab.features.extractors import (
     DiffFeature,
-    DynamicPressureFeature,
     MaxFeature,
     MinFeature,
     StdFeature,
@@ -21,7 +20,6 @@ from ts_featurelab.features.window_builder import WindowBuilder
 
 __all__ = [
     "DiffFeature",
-    "DynamicPressureFeature",
     "ExecutionPlan",
     "FeatureContext",
     "FeatureEngine",

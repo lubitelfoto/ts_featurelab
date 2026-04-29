@@ -2,8 +2,50 @@ from datetime import datetime, timedelta
 
 import polars as pl
 
+from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.context import FeatureContext
+from ts_featurelab.features.featurespec import FeatureSpec
 from ts_featurelab.features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
 from ts_featurelab.features.wavelet import pywt
+
+
+# Example of a domain-specific feature.
+# Not part of the core library.
+class DynamicPressureFeature(SingleColumnFeatureExtractor):
+    name = "dynamic_pressure"
+    output_kind = "series"
+
+    def validate_spec(self, spec: FeatureSpec) -> None:
+        density_col = spec.params.get("density_column")
+        speed_col = spec.params.get("speed_column")
+        if not density_col or not speed_col:
+            raise ValueError(
+                "dynamic_pressure requires 'density_column' and 'speed_column'"
+            )
+
+    def get_dependencies(self, spec: FeatureSpec) -> set[str]:
+        density_col = spec.params.get("density_column")
+        speed_col = spec.params.get("speed_column")
+        return {value for value in (density_col, speed_col) if value}
+
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> pl.Series:
+        density_col = spec.params.get("density_column")
+        speed_col = spec.params.get("speed_column")
+        agg = spec.params.get("agg", "mean")
+        every = spec.params.get("resample")
+
+        density_series = context.get_aggregated_series(density_col, every=every, agg=agg)
+        speed_series = context.get_aggregated_series(speed_col, every=every, agg=agg)
+        if len(density_series) != len(speed_series):
+            raise ValueError(
+                f"dynamic_pressure inputs '{density_col}' and '{speed_col}' have incompatible lengths"
+            )
+
+        values = [
+            None if density is None or speed is None else float(density * (speed ** 2))
+            for density, speed in zip(density_series.to_list(), speed_series.to_list())
+        ]
+        return pl.Series(spec.alias, values)
 
 
 def build_minute_dataframe() -> pl.DataFrame:
@@ -58,7 +100,7 @@ def build_feature_config() -> dict:
         },
         {
             "name": "dynamic_pressure",
-            "alias": "_p_dyn",
+            "alias": "p_dyn",
             "params": {
                 "density_column": "oe_f1m_proton_density",
                 "speed_column": "oe_f1m_proton_speed",
@@ -69,8 +111,8 @@ def build_feature_config() -> dict:
         },
         {
             "name": "diff",
-            "column": "_p_dyn",
-            "alias": "_p_dyn_diff",
+            "column": "p_dyn",
+            "alias": "p_dyn_diff",
             "params": {
                 "periods": 1,
             },
@@ -78,7 +120,7 @@ def build_feature_config() -> dict:
         },
         {
             "name": "value_at_lag",
-            "column": "_p_dyn_diff",
+            "column": "p_dyn_diff",
             "alias": "p_dyn_diff_lag2",
             "params": {
                 "lag": 2,
@@ -112,6 +154,7 @@ def main() -> None:
 
     specs = parse_feature_specs(config)
     registry = build_default_registry()
+    registry.register(DynamicPressureFeature())
     engine = FeatureEngine(registry, time_col=config["time_col"])
 
     # Each sample contains only past data up to prediction_time.

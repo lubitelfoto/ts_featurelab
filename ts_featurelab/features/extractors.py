@@ -91,45 +91,6 @@ class ValueAtLagFeature(SingleColumnFeatureExtractor):
         return {alias: float(series[-(lag + 1)])}
 
 
-class DynamicPressureFeature(SingleColumnFeatureExtractor):
-    name = "dynamic_pressure"
-    output_kind = "series"
-
-    def validate_spec(self, spec: FeatureSpec) -> None:
-        density_col = spec.params.get("density_column")
-        speed_col = spec.params.get("speed_column")
-        if not density_col or not speed_col:
-            raise ValueError(
-                "dynamic_pressure requires 'density_column' and 'speed_column'"
-            )
-
-    def get_dependencies(self, spec: FeatureSpec) -> set[str]:
-        density_col = spec.params.get("density_column")
-        speed_col = spec.params.get("speed_column")
-        deps = {value for value in (density_col, speed_col) if value}
-        return deps
-
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> pl.Series:
-        alias = spec.alias
-        density_col = spec.params.get("density_column")
-        speed_col = spec.params.get("speed_column")
-        agg = spec.params.get("agg", "mean")
-        every = spec.params.get("resample")
-
-        density_series = context.get_aggregated_series(density_col, every=every, agg=agg)
-        speed_series = context.get_aggregated_series(speed_col, every=every, agg=agg)
-        if len(density_series) != len(speed_series):
-            raise ValueError(
-                f"dynamic_pressure inputs '{density_col}' and '{speed_col}' have incompatible lengths"
-            )
-
-        values = [
-            None if density is None or speed is None else float(density * (speed ** 2))
-            for density, speed in zip(density_series.to_list(), speed_series.to_list())
-        ]
-        return pl.Series(alias, values)
-
-
 def build_default_registry():
     from ts_featurelab.features.registry import FeatureRegistry
 
@@ -142,7 +103,6 @@ def build_default_registry():
         TrendFeature(),
         DiffFeature(),
         ValueAtLagFeature(),
-        DynamicPressureFeature(),
         WaveletFeature(),
     ):
         registry.register(extractor)

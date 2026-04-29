@@ -11,6 +11,7 @@ from ts_featurelab.features.extractors import (
     build_default_registry,
 )
 from ts_featurelab.features.featurespec import FeatureSpec, parse_feature_specs
+from ts_featurelab.features.planner import ExecutionPlan, build_execution_plan
 from ts_featurelab.features.mean import MeanFeature
 from ts_featurelab.features.registry import FeatureRegistry
 from ts_featurelab.features.trend import TrendFeature
@@ -21,6 +22,7 @@ from ts_featurelab.features.window_builder import WindowBuilder
 __all__ = [
     "DiffFeature",
     "DynamicPressureFeature",
+    "ExecutionPlan",
     "FeatureContext",
     "FeatureEngine",
     "FeatureRegistry",
@@ -35,6 +37,7 @@ __all__ = [
     "WindowBuilder",
     "WindowSample",
     "build_default_registry",
+    "build_execution_plan",
     "parse_feature_config",
     "parse_feature_specs",
 ]

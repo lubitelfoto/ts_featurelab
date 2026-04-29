@@ -8,8 +8,12 @@ class TrendFeature(SingleColumnFeatureExtractor):
 
     def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
         col = self.require_column(spec)
-        alias = spec.alias or f"{col}_trend"
-        series = context.raw()[col].drop_nulls()
+        alias = spec.alias
+        series = context.get_aggregated_series(
+            col,
+            every=spec.params.get("resample"),
+            agg=spec.params.get("agg", "mean"),
+        ).drop_nulls()
 
         if series.is_empty():
             return {alias: None}

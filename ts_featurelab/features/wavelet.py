@@ -23,12 +23,16 @@ class WaveletFeature(SingleColumnFeatureExtractor):
             ) from _PYWT_IMPORT_ERROR
 
         col = self.require_column(spec)
-        prefix = spec.alias or col
+        prefix = spec.alias
         level = int(spec.params.get("level", 4))
         wavelet = spec.params.get("wavelet", "db4")
         min_points = int(spec.params.get("min_points", 64))
 
-        series = context.raw()[col].drop_nulls()
+        series = context.get_aggregated_series(
+            col,
+            every=spec.params.get("resample"),
+            agg=spec.params.get("agg", "mean"),
+        ).drop_nulls()
         x = series.to_numpy().copy()
 
         if len(x) < min_points:

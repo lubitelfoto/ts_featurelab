@@ -11,9 +11,20 @@ class FeatureContext:
         self.df_window = df_window.sort(time_col)
         self.time_col = time_col
         self.cache: dict[tuple[object, ...], pl.DataFrame] = {}
+        self.derived_series: dict[str, pl.Series] = {}
 
     def raw(self) -> pl.DataFrame:
         return self.df_window
+
+    def raw_columns(self) -> set[str]:
+        return set(self.df_window.columns)
+
+    def has_series(self, column: str) -> bool:
+        return column in self.raw_columns() or column in self.derived_series
+
+    def add_series(self, alias: str, series: pl.Series) -> None:
+        normalized = series if series.name == alias else pl.Series(alias, series)
+        self.derived_series[alias] = normalized
 
     def get_resampled(
         self,
@@ -80,6 +91,16 @@ class FeatureContext:
         every: str | None = None,
         agg: str = "mean",
     ) -> pl.Series:
+        if column in self.derived_series:
+            if every is not None:
+                raise ValueError(
+                    f"Cannot resample derived series '{column}'; resample it while creating it"
+                )
+            return self.derived_series[column]
+
+        if column not in self.df_window.columns:
+            raise ValueError(f"Unknown series column '{column}'")
+
         if every is None:
             return self.raw()[column]
 

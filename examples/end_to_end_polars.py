@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import polars as pl
 
 from ts_featurelab.features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
+from ts_featurelab.features.wavelet import pywt
 
 
 def build_minute_dataframe() -> pl.DataFrame:
@@ -29,54 +30,64 @@ def build_minute_dataframe() -> pl.DataFrame:
 
 
 def build_feature_config() -> dict:
-    return {
-        "time_col": "date",
-        "features": [
-            {
-                "name": "mean",
-                "column": "oe_f1m_proton_speed",
-                "alias": "speed_mean_raw_window",
+    features = [
+        {
+            "name": "mean",
+            "column": "oe_f1m_proton_speed",
+            "alias": "speed_mean_raw_window",
+        },
+        {
+            "name": "std",
+            "column": "oe_f1m_proton_speed",
+            "alias": "speed_std_raw_window",
+        },
+        {
+            "name": "trend",
+            "column": "oe_f1m_proton_speed",
+            "alias": "speed_trend_raw_window",
+        },
+        {
+            "name": "value_at_lag",
+            "column": "oe_f1m_proton_speed",
+            "alias": "speed_hourly_mean_lag_2",
+            "params": {
+                "lag": 2,
+                "resample": "1h",
+                "agg": "mean",
             },
-            {
-                "name": "std",
-                "column": "oe_f1m_proton_speed",
-                "alias": "speed_std_raw_window",
+        },
+        {
+            "name": "dynamic_pressure",
+            "alias": "_p_dyn",
+            "params": {
+                "density_column": "oe_f1m_proton_density",
+                "speed_column": "oe_f1m_proton_speed",
+                "resample": "1h",
+                "agg": "mean",
             },
-            {
-                "name": "trend",
-                "column": "oe_f1m_proton_speed",
-                "alias": "speed_trend_raw_window",
+            "internal": True,
+        },
+        {
+            "name": "diff",
+            "column": "_p_dyn",
+            "alias": "_p_dyn_diff",
+            "params": {
+                "periods": 1,
             },
-            {
-                "name": "value_at_lag",
-                "column": "oe_f1m_proton_speed",
-                "alias": "speed_hourly_mean_lag_2",
-                "params": {
-                    "lag": 2,
-                    "resample": "1h",
-                    "agg": "mean",
-                },
+            "internal": True,
+        },
+        {
+            "name": "value_at_lag",
+            "column": "_p_dyn_diff",
+            "alias": "p_dyn_diff_lag2",
+            "params": {
+                "lag": 2,
             },
-            {
-                "name": "diff",
-                "column": "oe_f1m_proton_density",
-                "alias": "density_hourly_mean_diff_1",
-                "params": {
-                    "periods": 1,
-                    "resample": "1h",
-                    "agg": "mean",
-                },
-            },
-            {
-                "name": "dynamic_pressure",
-                "alias": "p_dyn_hourly_mean",
-                "params": {
-                    "density_column": "oe_f1m_proton_density",
-                    "speed_column": "oe_f1m_proton_speed",
-                    "resample": "1h",
-                    "agg": "mean",
-                },
-            },
+        },
+    ]
+
+    if pywt is not None:
+        features.append(
             {
                 "name": "wavelet",
                 "column": "oe_f1m_proton_speed",
@@ -86,8 +97,12 @@ def build_feature_config() -> dict:
                     "level": 4,
                     "min_points": 128,
                 },
-            },
-        ],
+            }
+        )
+
+    return {
+        "time_col": "date",
+        "features": features,
     }
 
 
@@ -107,6 +122,10 @@ def main() -> None:
         min_history="4h",
     )
     samples = window_builder.transform(df)
+
+    print("Execution plan:")
+    print(engine.explain(specs, raw_columns=set(df.columns)))
+    print()
 
     features_df = engine.transform_many(samples, specs)
 

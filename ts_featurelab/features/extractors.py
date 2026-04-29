@@ -1,6 +1,6 @@
 import polars as pl
 
-from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.base import FeatureResult, SingleColumnFeatureExtractor
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
 from ts_featurelab.features.mean import MeanFeature
@@ -11,7 +11,7 @@ from ts_featurelab.features.wavelet import WaveletFeature
 class StdFeature(SingleColumnFeatureExtractor):
     name = "std"
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         value = context.get_aggregated_series(
@@ -19,13 +19,13 @@ class StdFeature(SingleColumnFeatureExtractor):
             every=spec.params.get("resample"),
             agg=spec.params.get("agg", "mean"),
         ).std()
-        return {alias: None if value is None else float(value)}
+        return FeatureResult.from_scalar(alias, None if value is None else float(value))
 
 
 class MinFeature(SingleColumnFeatureExtractor):
     name = "min"
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         value = context.get_aggregated_series(
@@ -33,13 +33,13 @@ class MinFeature(SingleColumnFeatureExtractor):
             every=spec.params.get("resample"),
             agg=spec.params.get("agg", "mean"),
         ).min()
-        return {alias: None if value is None else float(value)}
+        return FeatureResult.from_scalar(alias, None if value is None else float(value))
 
 
 class MaxFeature(SingleColumnFeatureExtractor):
     name = "max"
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         value = context.get_aggregated_series(
@@ -47,7 +47,7 @@ class MaxFeature(SingleColumnFeatureExtractor):
             every=spec.params.get("resample"),
             agg=spec.params.get("agg", "mean"),
         ).max()
-        return {alias: None if value is None else float(value)}
+        return FeatureResult.from_scalar(alias, None if value is None else float(value))
 
 
 class DiffFeature(SingleColumnFeatureExtractor):
@@ -59,14 +59,14 @@ class DiffFeature(SingleColumnFeatureExtractor):
         if periods < 0:
             raise ValueError("diff does not allow negative periods")
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> pl.Series:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         periods = int(spec.params.get("periods", 1))
         every = spec.params.get("resample")
         agg = spec.params.get("agg", "mean")
         series = context.get_aggregated_series(col, every=every, agg=agg)
-        return series.diff(n=periods).rename(alias)
+        return FeatureResult.from_series(alias, series.diff(n=periods).rename(alias))
 
 
 class ValueAtLagFeature(SingleColumnFeatureExtractor):
@@ -77,7 +77,7 @@ class ValueAtLagFeature(SingleColumnFeatureExtractor):
         if lag < 0:
             raise ValueError("value_at_lag does not allow negative lag")
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         lag = int(spec.params.get("lag", 1))
@@ -86,9 +86,9 @@ class ValueAtLagFeature(SingleColumnFeatureExtractor):
         series = context.get_aggregated_series(col, every=every, agg=agg).drop_nulls()
 
         if len(series) <= lag:
-            return {alias: None}
+            return FeatureResult.from_scalar(alias, None)
 
-        return {alias: float(series[-(lag + 1)])}
+        return FeatureResult.from_scalar(alias, float(series[-(lag + 1)]))
 
 
 def build_default_registry():

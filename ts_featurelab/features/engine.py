@@ -1,5 +1,6 @@
 import polars as pl
 
+from ts_featurelab.features.base import FeatureResult
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
 from ts_featurelab.features.planner import ExecutionPlan, PlannedFeature, build_execution_plan
@@ -85,31 +86,58 @@ class FeatureEngine:
     ) -> None:
         spec = planned_feature.spec
         extractor = self.registry.get(spec.name)
-        result = extractor.extract(context, spec)
+        raw_result = extractor.extract(context, spec)
+        result = self._normalize_result(spec, planned_feature, raw_result)
 
         if planned_feature.output_kind == "series":
-            if not isinstance(result, pl.Series):
-                raise TypeError(
-                    f"Feature '{spec.alias}' must return a polars Series, got {type(result).__name__}"
-                )
-            context.add_series(spec.alias, result)
+            for alias, series in result.series.items():
+                context.add_series(alias, series)
             return
 
-        if not isinstance(result, dict):
-            result = {spec.alias: result}
-
-        overlap = set(row).intersection(result)
+        overlap = set(row).intersection(result.scalars)
         if overlap:
             repeated = ", ".join(sorted(overlap))
             raise ValueError(f"Duplicate feature names: {repeated}")
 
-        row.update(result)
+        row.update(result.scalars)
 
         output_columns = extractor.get_output_columns(spec, result)
         target = internal_columns if spec.internal else visible_columns
         for column in output_columns:
             if column not in target:
                 target.append(column)
+
+    def _normalize_result(
+        self,
+        spec: FeatureSpec,
+        planned_feature: PlannedFeature,
+        raw_result: object,
+    ) -> FeatureResult:
+        if isinstance(raw_result, FeatureResult):
+            result = raw_result
+        elif isinstance(raw_result, pl.Series):
+            result = FeatureResult.from_series(spec.alias, raw_result)
+        elif isinstance(raw_result, dict):
+            result = FeatureResult.from_scalars(raw_result)
+        else:
+            result = FeatureResult.from_scalar(spec.alias, raw_result)
+
+        if planned_feature.output_kind == "series":
+            if not result.series:
+                raise TypeError(
+                    f"Feature '{spec.alias}' must return a series result"
+                )
+            if result.scalars:
+                raise TypeError(
+                    f"Feature '{spec.alias}' cannot mix scalar and series outputs"
+                )
+        else:
+            if result.series:
+                raise TypeError(
+                    f"Feature '{spec.alias}' must return scalar outputs"
+                )
+
+        return result
 
     def transform_many(
         self,

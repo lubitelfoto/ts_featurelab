@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import polars as pl
 
-from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.base import FeatureResult, SingleColumnFeatureExtractor
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
 from ts_featurelab.features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
@@ -28,7 +28,7 @@ class DynamicPressureFeature(SingleColumnFeatureExtractor):
         speed_col = spec.params.get("speed_column")
         return {value for value in (density_col, speed_col) if value}
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> pl.Series:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         density_col = spec.params.get("density_column")
         speed_col = spec.params.get("speed_column")
         agg = spec.params.get("agg", "mean")
@@ -45,7 +45,7 @@ class DynamicPressureFeature(SingleColumnFeatureExtractor):
             None if density is None or speed is None else float(density * (speed ** 2))
             for density, speed in zip(density_series.to_list(), speed_series.to_list())
         ]
-        return pl.Series(spec.alias, values)
+        return FeatureResult.from_series(spec.alias, pl.Series(spec.alias, values))
 
 
 def build_minute_dataframe() -> pl.DataFrame:

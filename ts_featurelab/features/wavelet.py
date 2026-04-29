@@ -1,6 +1,6 @@
 import math
 
-from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.base import FeatureResult, SingleColumnFeatureExtractor
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
 
@@ -16,7 +16,7 @@ else:
 class WaveletFeature(SingleColumnFeatureExtractor):
     name = "wavelet"
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         if pywt is None:
             raise ImportError(
                 "WaveletFeature requires a working PyWavelets installation"
@@ -36,7 +36,7 @@ class WaveletFeature(SingleColumnFeatureExtractor):
         x = series.to_numpy().copy()
 
         if len(x) < min_points:
-            return {}
+            return FeatureResult()
 
         coeffs = pywt.wavedec(x, wavelet=wavelet, level=level)
         out: dict[str, float] = {}
@@ -54,4 +54,4 @@ class WaveletFeature(SingleColumnFeatureExtractor):
             ratio = 0.0 if math.isclose(detail_energy, 0.0) else first_detail_energy / detail_energy
             out[f"{prefix}_wl_ratio_d1"] = float(ratio)
 
-        return out
+        return FeatureResult.from_scalars(out)

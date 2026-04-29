@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Literal
 
 import polars as pl
@@ -8,12 +9,31 @@ from ts_featurelab.features.featurespec import FeatureSpec
 FeatureOutputKind = Literal["series", "scalar"]
 
 
+@dataclass
+class FeatureResult:
+    scalars: dict[str, object] = field(default_factory=dict)
+    series: dict[str, pl.Series] = field(default_factory=dict)
+
+    @classmethod
+    def from_scalar(cls, alias: str, value: object) -> "FeatureResult":
+        return cls(scalars={alias: value})
+
+    @classmethod
+    def from_scalars(cls, values: dict[str, object]) -> "FeatureResult":
+        return cls(scalars=dict(values))
+
+    @classmethod
+    def from_series(cls, alias: str, values: pl.Series) -> "FeatureResult":
+        normalized = values if values.name == alias else pl.Series(alias, values)
+        return cls(series={alias: normalized})
+
+
 class FeatureExtractor(ABC):
     name: str
     output_kind: FeatureOutputKind = "scalar"
 
     @abstractmethod
-    def extract(self, context, spec: FeatureSpec) -> pl.Series | dict[str, object]:
+    def extract(self, context, spec: FeatureSpec) -> FeatureResult:
         raise NotImplementedError
 
     def get_dependencies(self, spec: FeatureSpec) -> set[str]:
@@ -28,13 +48,11 @@ class FeatureExtractor(ABC):
     def get_output_columns(
         self,
         spec: FeatureSpec,
-        result: object,
+        result: FeatureResult,
     ) -> list[str]:
         if self.get_output_kind(spec) == "series":
-            return [spec.alias]
-        if isinstance(result, dict):
-            return list(result.keys())
-        return [spec.alias]
+            return list(result.series.keys()) or [spec.alias]
+        return list(result.scalars.keys()) or [spec.alias]
 
 
 class SingleColumnFeatureExtractor(FeatureExtractor):

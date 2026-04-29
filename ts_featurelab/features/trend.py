@@ -1,4 +1,4 @@
-from ts_featurelab.features.base import SingleColumnFeatureExtractor
+from ts_featurelab.features.base import FeatureResult, SingleColumnFeatureExtractor
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
 
@@ -6,7 +6,7 @@ from ts_featurelab.features.featurespec import FeatureSpec
 class TrendFeature(SingleColumnFeatureExtractor):
     name = "trend"
 
-    def extract(self, context: FeatureContext, spec: FeatureSpec) -> dict:
+    def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
         col = self.require_column(spec)
         alias = spec.alias
         series = context.get_aggregated_series(
@@ -16,7 +16,7 @@ class TrendFeature(SingleColumnFeatureExtractor):
         ).drop_nulls()
 
         if series.is_empty():
-            return {alias: None}
+            return FeatureResult.from_scalar(alias, None)
 
         value = series[-1] - series[0]
-        return {alias: float(value)}
+        return FeatureResult.from_scalar(alias, float(value))

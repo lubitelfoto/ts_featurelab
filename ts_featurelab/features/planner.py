@@ -8,6 +8,14 @@ from ts_featurelab.features.registry import FeatureRegistry
 
 @dataclass(frozen=True)
 class PlannedFeature:
+    """Feature spec enriched with dependency and output metadata.
+
+    Attributes:
+        spec: Original feature specification.
+        dependencies: Derived series aliases that must be produced first.
+        output_kind: Expected output kind for this feature.
+    """
+
     spec: FeatureSpec
     dependencies: tuple[str, ...]
     output_kind: FeatureOutputKind
@@ -15,10 +23,23 @@ class PlannedFeature:
 
 @dataclass(frozen=True)
 class ExecutionPlan:
+    """Dependency-ordered plan for executing feature specs.
+
+    Attributes:
+        stages: Tuple of execution stages. Features in the same stage have no
+            dependencies between each other and can be computed after all
+            previous stages are complete.
+    """
+
     stages: tuple[tuple[PlannedFeature, ...], ...]
 
     @property
     def output_kinds(self) -> dict[str, FeatureOutputKind]:
+        """Map feature aliases to output kinds.
+
+        Returns:
+            Dictionary keyed by feature alias.
+        """
         return {
             feature.spec.alias: feature.output_kind
             for stage in self.stages
@@ -27,6 +48,11 @@ class ExecutionPlan:
 
     @property
     def dependencies(self) -> dict[str, tuple[str, ...]]:
+        """Map feature aliases to their derived-series dependencies.
+
+        Returns:
+            Dictionary keyed by feature alias.
+        """
         return {
             feature.spec.alias: feature.dependencies
             for stage in self.stages
@@ -39,6 +65,20 @@ def build_execution_plan(
     raw_columns: set[str],
     registry: FeatureRegistry,
 ) -> ExecutionPlan:
+    """Build a topologically sorted execution plan for features.
+
+    Args:
+        specs: Feature specifications in user-defined order.
+        raw_columns: Columns available directly in the input dataframe.
+        registry: Registry used to resolve extractors and output kinds.
+
+    Returns:
+        Execution plan split into dependency stages.
+
+    Raises:
+        ValueError: If aliases collide, dependencies are unknown, scalar
+            outputs are used as series inputs, or cycles are detected.
+    """
     alias_to_spec: dict[str, FeatureSpec] = {}
     alias_order: dict[str, int] = {}
     for idx, spec in enumerate(specs):

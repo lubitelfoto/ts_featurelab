@@ -9,7 +9,15 @@ from ts_featurelab.features.window import WindowSample
 
 
 class FeatureEngine:
+    """Execute feature specifications over one or many time windows."""
+
     def __init__(self, registry: FeatureRegistry, time_col: str = "date"):
+        """Initialize the feature engine.
+
+        Args:
+            registry: Registry containing available feature extractors.
+            time_col: Timestamp column used by each ``FeatureContext``.
+        """
         self.registry = registry
         self.time_col = time_col
 
@@ -18,6 +26,15 @@ class FeatureEngine:
         specs: list[FeatureSpec],
         raw_columns: set[str],
     ) -> ExecutionPlan:
+        """Build a dependency-aware execution plan for feature specs.
+
+        Args:
+            specs: Feature specifications to execute.
+            raw_columns: Columns available in the input dataframe.
+
+        Returns:
+            Execution plan grouped into dependency stages.
+        """
         return build_execution_plan(specs, raw_columns=raw_columns, registry=self.registry)
 
     def explain(
@@ -25,6 +42,15 @@ class FeatureEngine:
         specs: list[FeatureSpec],
         raw_columns: set[str],
     ) -> str:
+        """Describe the execution order and dependencies as text.
+
+        Args:
+            specs: Feature specifications to execute.
+            raw_columns: Columns available in the input dataframe.
+
+        Returns:
+            Human-readable multiline explanation.
+        """
         plan = self.build_plan(specs, raw_columns=raw_columns)
         lines: list[str] = []
 
@@ -47,6 +73,15 @@ class FeatureEngine:
         sample: WindowSample,
         specs: list[FeatureSpec],
     ) -> dict[str, object]:
+        """Compute scalar feature outputs for a single window sample.
+
+        Args:
+            sample: Window sample ending at one prediction time.
+            specs: Feature specifications to execute.
+
+        Returns:
+            Row dictionary containing ``prediction_time`` and visible scalars.
+        """
         plan = self.build_plan(specs, raw_columns=set(sample.df.columns))
         row, visible_columns, _ = self._transform_one_with_plan(sample, plan)
         keep = ["prediction_time"] + [
@@ -59,6 +94,15 @@ class FeatureEngine:
         sample: WindowSample,
         plan: ExecutionPlan,
     ) -> tuple[dict[str, object], list[str], list[str]]:
+        """Compute one row using an already built execution plan.
+
+        Args:
+            sample: Window sample ending at one prediction time.
+            plan: Precomputed execution plan.
+
+        Returns:
+            Tuple of row values, visible scalar columns, and internal columns.
+        """
         context = FeatureContext(sample.df, time_col=self.time_col)
         row: dict[str, object] = {"prediction_time": sample.prediction_time}
         visible_columns: list[str] = []
@@ -84,6 +128,18 @@ class FeatureEngine:
         visible_columns: list[str],
         internal_columns: list[str],
     ) -> None:
+        """Execute one planned feature and merge it into context or output row.
+
+        Args:
+            context: Window-scoped context shared by all feature stages.
+            row: Mutable scalar output row.
+            planned_feature: Feature and dependency metadata to execute.
+            visible_columns: Mutable list of scalar columns visible in output.
+            internal_columns: Mutable list of scalar columns hidden from output.
+
+        Raises:
+            ValueError: If a scalar feature produces a duplicate output name.
+        """
         spec = planned_feature.spec
         extractor = self.registry.get(spec.name)
         raw_result = extractor.extract(context, spec)
@@ -113,6 +169,19 @@ class FeatureEngine:
         planned_feature: PlannedFeature,
         raw_result: object,
     ) -> FeatureResult:
+        """Convert extractor return values to ``FeatureResult`` and validate shape.
+
+        Args:
+            spec: Feature specification being executed.
+            planned_feature: Planned feature metadata with expected output kind.
+            raw_result: Value returned by an extractor.
+
+        Returns:
+            Normalized feature result.
+
+        Raises:
+            TypeError: If the result does not match the planned output kind.
+        """
         if isinstance(raw_result, FeatureResult):
             result = raw_result
         elif isinstance(raw_result, pl.Series):
@@ -144,6 +213,15 @@ class FeatureEngine:
         samples: list[WindowSample],
         specs: list[FeatureSpec],
     ) -> pl.DataFrame:
+        """Compute feature rows for many window samples.
+
+        Args:
+            samples: Window samples to transform.
+            specs: Feature specifications to execute for each sample.
+
+        Returns:
+            Dataframe with one row per sample and visible scalar feature columns.
+        """
         if not samples:
             return pl.DataFrame({"prediction_time": []})
 

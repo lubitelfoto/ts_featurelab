@@ -14,9 +14,33 @@ else:
 
 
 class WaveletFeature(SingleColumnFeatureExtractor):
+    """Compute wavelet energy and dispersion features for one input series.
+
+    Params:
+        wavelet: PyWavelets wavelet name. Defaults to ``"db4"``.
+        level: Wavelet decomposition level. Defaults to ``4``.
+        min_points: Minimum number of non-null values required. Defaults to
+            ``64``.
+        resample: Optional Polars duration string used before extraction.
+        agg: Aggregation applied during resampling. Defaults to ``"mean"``.
+    """
+
     name = "wavelet"
 
     def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
+        """Extract wavelet-derived scalar features for the configured column.
+
+        Args:
+            context: Window-scoped feature context.
+            spec: Feature specification with ``column`` and optional params.
+
+        Returns:
+            Scalar result with one or more columns prefixed by ``spec.alias``.
+            Returns an empty result when there are fewer than ``min_points``.
+
+        Raises:
+            ImportError: If PyWavelets is unavailable or failed to import.
+        """
         if pywt is None:
             raise ImportError(
                 "WaveletFeature requires a working PyWavelets installation"

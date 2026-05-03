@@ -12,10 +12,27 @@ from ts_featurelab.features.wavelet import pywt
 # Example of a domain-specific feature.
 # Not part of the core library.
 class DynamicPressureFeature(SingleColumnFeatureExtractor):
+    """Example domain feature that computes dynamic pressure as a series.
+
+    Params:
+        density_column: Raw or derived density series name.
+        speed_column: Raw or derived speed series name.
+        resample: Optional Polars duration string used before extraction.
+        agg: Aggregation applied during resampling. Defaults to ``"mean"``.
+    """
+
     name = "dynamic_pressure"
     output_kind = "series"
 
     def validate_spec(self, spec: FeatureSpec) -> None:
+        """Validate that density and speed inputs are configured.
+
+        Args:
+            spec: Feature specification for dynamic pressure.
+
+        Raises:
+            ValueError: If ``density_column`` or ``speed_column`` is missing.
+        """
         density_col = spec.params.get("density_column")
         speed_col = spec.params.get("speed_column")
         if not density_col or not speed_col:
@@ -24,11 +41,31 @@ class DynamicPressureFeature(SingleColumnFeatureExtractor):
             )
 
     def get_dependencies(self, spec: FeatureSpec) -> set[str]:
+        """Return density and speed dependencies.
+
+        Args:
+            spec: Feature specification for dynamic pressure.
+
+        Returns:
+            Set of configured dependency names.
+        """
         density_col = spec.params.get("density_column")
         speed_col = spec.params.get("speed_column")
         return {value for value in (density_col, speed_col) if value}
 
     def extract(self, context: FeatureContext, spec: FeatureSpec) -> FeatureResult:
+        """Compute dynamic pressure values for the current window.
+
+        Args:
+            context: Window-scoped feature context.
+            spec: Feature specification with density and speed params.
+
+        Returns:
+            Series result named ``spec.alias``.
+
+        Raises:
+            ValueError: If input series lengths differ after aggregation.
+        """
         density_col = spec.params.get("density_column")
         speed_col = spec.params.get("speed_column")
         agg = spec.params.get("agg", "mean")
@@ -49,6 +86,11 @@ class DynamicPressureFeature(SingleColumnFeatureExtractor):
 
 
 def build_minute_dataframe() -> pl.DataFrame:
+    """Build synthetic minute-level input data for the example.
+
+    Returns:
+        Polars dataframe with timestamp, speed, and density columns.
+    """
     start = datetime(2024, 1, 1, 0, 0, 0)
     minutes = 12 * 60
 
@@ -72,6 +114,12 @@ def build_minute_dataframe() -> pl.DataFrame:
 
 
 def build_feature_config() -> dict:
+    """Build an example feature configuration dictionary.
+
+    Returns:
+        Configuration with raw scalar features, internal derived features, and
+        optional wavelet features when PyWavelets is importable.
+    """
     features = [
         {
             "name": "mean",
@@ -149,6 +197,7 @@ def build_feature_config() -> dict:
 
 
 def main() -> None:
+    """Run the end-to-end Polars feature extraction example."""
     df = build_minute_dataframe()
     config = build_feature_config()
 

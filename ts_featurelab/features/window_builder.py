@@ -6,6 +6,8 @@ from ts_featurelab.features.window import WindowSample
 
 
 class WindowBuilder:
+    """Build rolling historical windows from a time-ordered dataframe."""
+
     def __init__(
         self,
         time_col: str = "date",
@@ -13,12 +15,32 @@ class WindowBuilder:
         step: str = "1h",
         min_history: str | None = None,
     ):
+        """Initialize rolling-window parameters.
+
+        Args:
+            time_col: Timestamp column used to sort and slice the dataframe.
+            window_size: Duration included before each prediction time.
+            step: Distance between consecutive prediction times.
+            min_history: Minimum history before the first prediction time.
+                Defaults to ``window_size``.
+        """
         self.time_col = time_col
         self.window_size = window_size
         self.step = step
         self.min_history = min_history or window_size
 
     def transform(self, df: pl.DataFrame) -> list[WindowSample]:
+        """Convert a dataframe into rolling ``WindowSample`` objects.
+
+        Args:
+            df: Input dataframe containing ``time_col``.
+
+        Returns:
+            List of non-empty windows with prediction time and metadata.
+
+        Raises:
+            ValueError: If ``time_col`` is missing.
+        """
         if self.time_col not in df.columns:
             raise ValueError(f"Missing time column '{self.time_col}'")
 
@@ -66,6 +88,19 @@ class WindowBuilder:
 
 
 def _parse_duration_to_timedelta(value: str) -> timedelta:
+    """Parse a compact duration string into ``datetime.timedelta``.
+
+    Supported units are minutes (``m``), hours (``h``), and days (``d``).
+
+    Args:
+        value: Duration string such as ``"30m"``, ``"4h"``, or ``"1d"``.
+
+    Returns:
+        Equivalent ``timedelta``.
+
+    Raises:
+        ValueError: If the duration format or unit is unsupported.
+    """
     unit_map = {
         "m": "minutes",
         "h": "hours",

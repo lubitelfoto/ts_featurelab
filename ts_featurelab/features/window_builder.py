@@ -49,9 +49,9 @@ class WindowBuilder:
         if not times:
             return []
 
-        step_td = _parse_duration_to_timedelta(self.step)
-        window_td = _parse_duration_to_timedelta(self.window_size)
-        min_history_td = _parse_duration_to_timedelta(self.min_history)
+        step_td = parse_duration_to_timedelta(self.step)
+        window_td = parse_duration_to_timedelta(self.window_size)
+        min_history_td = parse_duration_to_timedelta(self.min_history)
 
         start_time = times[0] + min_history_td
         last_time = times[-1]
@@ -87,7 +87,7 @@ class WindowBuilder:
         return samples
 
 
-def _parse_duration_to_timedelta(value: str) -> timedelta:
+def parse_duration_to_timedelta(value: str) -> timedelta:
     """Parse a compact duration string into ``datetime.timedelta``.
 
     Supported units are minutes (``m``), hours (``h``), and days (``d``).
@@ -115,3 +115,6 @@ def _parse_duration_to_timedelta(value: str) -> timedelta:
         raise ValueError(f"Unsupported duration unit '{unit}'")
 
     return timedelta(**{unit_map[unit]: amount})
+
+
+_parse_duration_to_timedelta = parse_duration_to_timedelta

@@ -1,6 +1,7 @@
 from typing import Any
 
 from ts_featurelab.features.featurespec import FeatureSpec, parse_feature_specs
+from ts_featurelab.features.target import TargetSpec, parse_target_spec
 
 
 def parse_feature_config(config: dict[str, Any]) -> tuple[str, list[FeatureSpec]]:
@@ -16,3 +17,21 @@ def parse_feature_config(config: dict[str, Any]) -> tuple[str, list[FeatureSpec]
     time_col = config.get("time_col", "date")
     specs = parse_feature_specs(config)
     return time_col, specs
+
+
+def parse_supervised_config(
+    config: dict[str, Any],
+) -> tuple[str, list[FeatureSpec], TargetSpec | None]:
+    """Parse feature and optional target configuration.
+
+    Args:
+        config: Configuration dictionary containing feature entries and an
+            optional ``target`` entry.
+
+    Returns:
+        Tuple with the time column name, parsed feature specs, and an optional
+        target spec.
+    """
+    time_col, specs = parse_feature_config(config)
+    target_spec = parse_target_spec(config)
+    return time_col, specs, target_spec

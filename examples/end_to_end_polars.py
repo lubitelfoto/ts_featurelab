@@ -5,7 +5,15 @@ import polars as pl
 from ts_featurelab.features.base import FeatureResult, SingleColumnFeatureExtractor
 from ts_featurelab.features.context import FeatureContext
 from ts_featurelab.features.featurespec import FeatureSpec
-from ts_featurelab.features import FeatureEngine, WindowBuilder, build_default_registry, parse_feature_specs
+from ts_featurelab.features import (
+    FeatureEngine,
+    TargetBuilder,
+    TargetSpec,
+    WindowBuilder,
+    build_default_registry,
+    parse_feature_specs,
+    parse_target_spec,
+)
 from ts_featurelab.features.wavelet import pywt
 
 
@@ -193,6 +201,13 @@ def build_feature_config() -> dict:
     return {
         "time_col": "date",
         "features": features,
+        "target": {
+            "column": "oe_f1m_proton_speed",
+            "alias": "speed_next_hour",
+            "task": "regression",
+            "horizon": "1h",
+            "agg": "last",
+        },
     }
 
 
@@ -220,6 +235,31 @@ def main() -> None:
     print()
 
     features_df = engine.transform_many(samples, specs)
+    target_builder = TargetBuilder(time_col=config["time_col"])
+
+    regression_target = parse_target_spec(config)
+    targets_df = target_builder.transform(df, samples, regression_target)
+    regression_dataset = target_builder.attach(
+        features_df,
+        targets_df,
+        target_alias=regression_target.alias,
+    )
+
+    classification_target = TargetSpec(
+        column="oe_f1m_proton_speed",
+        alias="speed_direction_class",
+        task="classification",
+        horizon="1h",
+        agg="last",
+        thresholds=[features_df["speed_mean_raw_window"].mean()],
+        labels=["low_or_equal", "high"],
+    )
+    class_targets_df = target_builder.transform(df, samples, classification_target)
+    classification_dataset = target_builder.attach(
+        features_df,
+        class_targets_df,
+        target_alias=classification_target.alias,
+    )
 
     print("Raw minute-level input:")
     print(df.head(5))
@@ -231,6 +271,14 @@ def main() -> None:
 
     print("Feature rows:")
     print(features_df)
+    print()
+
+    print("Regression dataset:")
+    print(regression_dataset)
+    print()
+
+    print("Classification dataset:")
+    print(classification_dataset)
 
 
 if __name__ == "__main__":

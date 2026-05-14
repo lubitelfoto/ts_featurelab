@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import Literal
 
 import polars as pl
 
@@ -10,12 +11,19 @@ class FeatureContext:
     resampling operations so several features can share the same aggregation.
     """
 
-    def __init__(self, df_window: pl.DataFrame, time_col: str = "date"):
+    def __init__(
+        self,
+        df_window: pl.DataFrame,
+        time_col: str = "date",
+        index_mode: Literal["time", "row"] = "time",
+    ):
         """Initialize a feature context.
 
         Args:
             df_window: Polars dataframe containing one historical window.
             time_col: Name of the timestamp column used for sorting/resampling.
+            index_mode: ``"time"`` for duration-aware windows, or ``"row"``
+                for row-count windows.
 
         Raises:
             ValueError: If ``time_col`` is missing from ``df_window``.
@@ -25,6 +33,7 @@ class FeatureContext:
 
         self.df_window = df_window.sort(time_col)
         self.time_col = time_col
+        self.index_mode = index_mode
         self.cache: dict[tuple[object, ...], pl.DataFrame] = {}
         self.derived_series: dict[str, pl.Series] = {}
 
@@ -79,6 +88,12 @@ class FeatureContext:
         Returns:
             Dataframe grouped by dynamic windows and sorted by ``time_col``.
         """
+        if self.index_mode != "time":
+            raise ValueError(
+                "Feature parameter 'resample' is only supported in index_mode='time'. "
+                "For row-based datasets, use raw window features or row-based lags."
+            )
+
         normalized = tuple(
             sorted(
                 (column, tuple(sorted(self._normalize_aggs(aggs))))

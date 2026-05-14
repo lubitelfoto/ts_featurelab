@@ -1,3 +1,5 @@
+from typing import Literal
+
 import polars as pl
 
 from ts_featurelab.features.base import FeatureResult
@@ -11,15 +13,23 @@ from ts_featurelab.features.window import WindowSample
 class FeatureEngine:
     """Execute feature specifications over one or many time windows."""
 
-    def __init__(self, registry: FeatureRegistry, time_col: str = "date"):
+    def __init__(
+        self,
+        registry: FeatureRegistry,
+        time_col: str = "date",
+        index_mode: Literal["time", "row"] = "time",
+    ):
         """Initialize the feature engine.
 
         Args:
             registry: Registry containing available feature extractors.
             time_col: Timestamp column used by each ``FeatureContext``.
+            index_mode: ``"time"`` for duration-aware contexts, or ``"row"``
+                for row-count contexts.
         """
         self.registry = registry
         self.time_col = time_col
+        self.index_mode = index_mode
 
     def build_plan(
         self,
@@ -103,7 +113,11 @@ class FeatureEngine:
         Returns:
             Tuple of row values, visible scalar columns, and internal columns.
         """
-        context = FeatureContext(sample.df, time_col=self.time_col)
+        context = FeatureContext(
+            sample.df,
+            time_col=self.time_col,
+            index_mode=self.index_mode,
+        )
         row: dict[str, object] = {"prediction_time": sample.prediction_time}
         visible_columns: list[str] = []
         internal_columns: list[str] = []

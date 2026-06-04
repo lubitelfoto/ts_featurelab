@@ -10,6 +10,7 @@ from ts_featurelab.features import (
     TargetSpec,
     WindowBuilder,
     build_default_registry,
+    parse_feature_specs,
 )
 
 
@@ -168,6 +169,56 @@ class RowIndexModeTests(unittest.TestCase):
         self.assertEqual(features_df["gamma_std"].to_list(), [2.0])
         self.assertEqual(features_df["gamma_trend"].to_list(), [4.0])
         self.assertEqual(features_df["gamma_lag_1"].to_list(), [2.0])
+
+    def test_transform_window_extracts_features_from_df_window_config(self) -> None:
+        df_window = self._depth_df(3)
+        config = {
+            "time_col": "depth",
+            "features": [
+                {
+                    "name": "mean",
+                    "column": "gamma_ray",
+                    "alias": "gamma_mean",
+                },
+                {
+                    "name": "value_at_lag",
+                    "column": "gamma_ray",
+                    "alias": "gamma_lag_1",
+                    "params": {"lag": 1},
+                },
+            ],
+        }
+        engine = FeatureEngine(
+            build_default_registry(),
+            time_col=config["time_col"],
+            index_mode="row",
+        )
+
+        features_df = engine.transform_window(
+            df_window,
+            parse_feature_specs(config),
+        )
+
+        self.assertEqual(features_df["prediction_time"].to_list(), [1001.0])
+        self.assertEqual(features_df["gamma_mean"].to_list(), [2.0])
+        self.assertEqual(features_df["gamma_lag_1"].to_list(), [2.0])
+
+    def test_transform_window_allows_explicit_prediction_time(self) -> None:
+        df_window = self._depth_df(3)
+        engine = FeatureEngine(
+            build_default_registry(),
+            time_col="depth",
+            index_mode="row",
+        )
+
+        features_df = engine.transform_window(
+            df_window,
+            [FeatureSpec(name="mean", column="gamma_ray", alias="gamma_mean")],
+            prediction_time=42,
+        )
+
+        self.assertEqual(features_df["prediction_time"].to_list(), [42])
+        self.assertEqual(features_df["gamma_mean"].to_list(), [2.0])
 
     def test_row_mode_target_horizon_by_rows(self) -> None:
         df = self._depth_df(8).with_columns(

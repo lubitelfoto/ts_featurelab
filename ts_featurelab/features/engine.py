@@ -99,6 +99,45 @@ class FeatureEngine:
         ]
         return {column: row[column] for column in keep}
 
+    def transform_window(
+        self,
+        df_window: pl.DataFrame,
+        specs: list[FeatureSpec],
+        prediction_time: object | None = None,
+    ) -> pl.DataFrame:
+        """Compute one feature row directly from a raw dataframe window.
+
+        This is a convenience API for callers that already build windows
+        outside of ``WindowBuilder`` and want to pass each window straight into
+        the feature extractors.
+
+        Args:
+            df_window: Raw dataframe slice available to the feature extractors.
+            specs: Feature specifications to execute.
+            prediction_time: Optional prediction/index value for the output
+                row. Defaults to the latest value in ``time_col`` after sorting
+                the window.
+
+        Returns:
+            One-row dataframe with ``prediction_time`` and visible scalar
+            feature columns.
+
+        Raises:
+            ValueError: If ``df_window`` is empty and ``prediction_time`` is not
+                provided, or if ``time_col`` is missing.
+        """
+        if prediction_time is None:
+            if self.time_col not in df_window.columns:
+                raise ValueError(f"Missing time column '{self.time_col}' in window")
+            if df_window.is_empty():
+                raise ValueError(
+                    "prediction_time must be provided for an empty window"
+                )
+            prediction_time = df_window.sort(self.time_col)[self.time_col][-1]
+
+        sample = WindowSample(prediction_time=prediction_time, df=df_window)
+        return self.transform_many([sample], specs)
+
     def _transform_one_with_plan(
         self,
         sample: WindowSample,

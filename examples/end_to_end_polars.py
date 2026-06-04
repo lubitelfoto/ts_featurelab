@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import polars as pl
 
@@ -268,6 +272,12 @@ def main() -> None:
     print("Number of windows:", len(samples))
     print("First window metadata:", samples[0].metadata if samples else {})
     print()
+
+    if samples:
+        feature_window = engine.transform_window(samples[0].df, specs)
+        print("Features from one ready df window:")
+        print(feature_window)
+        print()
 
     print("Feature rows:")
     print(features_df)

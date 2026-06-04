@@ -5,9 +5,10 @@ description = ""
 authors = ["Павел Чеканов <hydrophonyx@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.10,<4.0"
 polars = "^1.40.1"
 PyWavelets = "^1.8.0"
+numpy = ">=1.23,<2.3"
 
 [tool.poetry.dev-dependencies]
 
